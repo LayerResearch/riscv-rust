@@ -3208,8 +3208,7 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		name: "SLLIW",
 		operation: |cpu, word, _address| {
 			let f = parse_format_r(word);
-			let shamt = f.rs2 as u32;
-			cpu.x[f.rd] = (cpu.x[f.rs1] << shamt) as i32 as i64;
+			cpu.x[f.rd] = (cpu.x[f.rs1] << f.rs2) as i32 as i64;
 			Ok(())
 		},
 		disassemble: dump_format_r,
@@ -3314,8 +3313,7 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		name: "SRAIW",
 		operation: |cpu, word, _address| {
 			let f = parse_format_r(word);
-			let shamt = ((word >> 20) & 0x1f) as u32;
-			cpu.x[f.rd] = ((cpu.x[f.rs1] as i32) >> shamt) as i64;
+			cpu.x[f.rd] = ((cpu.x[f.rs1] as i32) >> f.rs2) as i64;
 			Ok(())
 		},
 		disassemble: dump_format_r,
@@ -3402,12 +3400,7 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		name: "SRLIW",
 		operation: |cpu, word, _address| {
 			let f = parse_format_r(word);
-			let mask = match cpu.xlen {
-				Xlen::Bit32 => 0x1f,
-				Xlen::Bit64 => 0x3f,
-			};
-			let shamt = (word >> 20) & mask;
-			cpu.x[f.rd] = ((cpu.x[f.rs1] as u32) >> shamt) as i32 as i64;
+			cpu.x[f.rd] = ((cpu.x[f.rs1] as u32) >> f.rs2) as i32 as i64;
 			Ok(())
 		},
 		disassemble: dump_format_r,

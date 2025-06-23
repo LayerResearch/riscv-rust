@@ -53,6 +53,7 @@ fn main() -> std::io::Result<()> {
 		"page_cache",
 		"Enable experimental page cache optimization",
 	);
+	opts.optopt("s", "signature", "Write signature to file", "a.signature");
 
 	let matches = match opts.parse(&args[1..]) {
 		Ok(m) => m,
@@ -97,7 +98,13 @@ fn main() -> std::io::Result<()> {
 		None => vec![],
 	};
 
-	let elf_filename = args[1].clone();
+	if matches.free.is_empty() {
+		print_usage(&program, opts);
+		// @TODO: throw error?
+		return Ok(());
+	}
+
+	let elf_filename = matches.free[0].clone();
 	let mut elf_file = File::open(elf_filename)?;
 	let mut elf_contents = vec![];
 	elf_file.read_to_end(&mut elf_contents)?;
@@ -140,5 +147,10 @@ fn main() -> std::io::Result<()> {
 		emulator.enable_page_cache(true);
 	}
 	emulator.run();
+
+	if let Some(signature_file) = matches.opt_str("s") {
+		let mut file = File::create(signature_file)?;
+		emulator.write_signature(&mut file, 4)?;
+	}
 	Ok(())
 }

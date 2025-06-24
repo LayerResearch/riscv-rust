@@ -970,6 +970,7 @@ impl Cpu {
 			1 => {
 				match funct3 {
 					0 => {
+						// C.ADDI
 						let r = (halfword >> 7) & 0x1f; // [11:7]
 						let imm = match halfword & 0x1000 {
 							0x1000 => 0xffffffc0,
@@ -977,17 +978,24 @@ impl Cpu {
 						} | // imm[31:6] <= [12]
 						((halfword >> 7) & 0x20) | // imm[5] <= [12]
 						((halfword >> 2) & 0x1f); // imm[4:0] <= [6:2]
-						if r == 0 && imm == 0 {
-							// C.NOP
-							// addi x0, x0, 0
-							return 0x13;
-						} else if r != 0 {
-							// C.ADDI
-							// addi r, r, imm
-							return (imm << 20) | (r << 15) | (r << 7) | 0x13;
+
+						match (r, imm) {
+							(0, 0) => {
+								// NOP
+								return 0x13;
+							}
+							(0, _) => {
+								// HINT
+								return 0x13;
+							}
+							(r, 0) => {
+								// HINT
+								return 0x13;
+							}
+							(r, imm) => {
+								return (imm << 20) | (r << 15) | (r << 7) | 0x13;
+							}
 						}
-						// @TODO: Support HINTs
-						// r == 0 and imm != 0 is HINTs
 					}
 					5 => {
 						// C.J

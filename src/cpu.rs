@@ -1806,7 +1806,7 @@ fn get_register_name(num: usize) -> &'static str {
 	}
 }
 
-const INSTRUCTION_NUM: usize = 117;
+const INSTRUCTION_NUM: usize = 120;
 
 // @TODO: Reorder in often used order as
 const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
@@ -1967,23 +1967,88 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 	},
 	Instruction {
 		mask: 0xf800707f,
+		data: 0x8000202f,
+		name: "AMOMIN.W",
+		operation: |cpu, word, _address| {
+			let f = parse_format_r(word);
+			let addr = cpu.x[f.rs1] as u64;
+			let orig = match cpu.mmu.load_word(addr) {
+				Ok(data) => data as i32,
+				Err(e) => return Err(e),
+			};
+			let value = cpu.x[f.rs2] as i32;
+			let min = if orig <= value { orig } else { value };
+			match cpu.mmu.store_word(addr, min as u32) {
+				Ok(()) => {}
+				Err(e) => return Err(e),
+			};
+			cpu.x[f.rd] = cpu.sign_extend(orig as i64);
+			Ok(())
+		},
+		disassemble: dump_format_r,
+	},
+	Instruction {
+		mask: 0xf800707f,
+		data: 0xa000202f,
+		name: "AMOMAX.W",
+		operation: |cpu, word, _address| {
+			let f = parse_format_r(word);
+			let addr = cpu.x[f.rs1] as u64;
+			let orig = match cpu.mmu.load_word(addr) {
+				Ok(data) => data as i32,
+				Err(e) => return Err(e),
+			};
+			let value = cpu.x[f.rs2] as i32;
+			let max = if orig >= value { orig } else { value };
+			match cpu.mmu.store_word(addr, max as u32) {
+				Ok(()) => {}
+				Err(e) => return Err(e),
+			};
+			cpu.x[f.rd] = cpu.sign_extend(orig as i64);
+			Ok(())
+		},
+		disassemble: dump_format_r,
+	},
+	Instruction {
+		mask: 0xf800707f,
+		data: 0xc000202f,
+		name: "AMOMINU.W",
+		operation: |cpu, word, _address| {
+			let f = parse_format_r(word);
+			let addr = cpu.x[f.rs1] as u64;
+			let orig = match cpu.mmu.load_word(addr) {
+				Ok(data) => data,
+				Err(e) => return Err(e),
+			};
+			let value = cpu.x[f.rs2] as u32;
+			let min = if orig <= value { orig } else { value };
+			match cpu.mmu.store_word(addr, min) {
+				Ok(()) => {}
+				Err(e) => return Err(e),
+			};
+			cpu.x[f.rd] = cpu.sign_extend(orig as i32 as i64);
+			Ok(())
+		},
+		disassemble: dump_format_r,
+	},
+	Instruction {
+		mask: 0xf800707f,
 		data: 0xe000202f,
 		name: "AMOMAXU.W",
 		operation: |cpu, word, _address| {
 			let f = parse_format_r(word);
-			let tmp = match cpu.mmu.load_word(cpu.x[f.rs1] as u64) {
+			let addr = cpu.x[f.rs1] as u64;
+			let orig = match cpu.mmu.load_word(addr) {
 				Ok(data) => data,
 				Err(e) => return Err(e),
 			};
-			let max = match cpu.x[f.rs2] as u32 >= tmp {
-				true => cpu.x[f.rs2] as u32,
-				false => tmp,
-			};
-			match cpu.mmu.store_word(cpu.x[f.rs1] as u64, max) {
+			let value = cpu.x[f.rs2] as u32;
+			let max = if orig >= value { orig } else { value };
+			match cpu.mmu.store_word(addr, max) {
 				Ok(()) => {}
 				Err(e) => return Err(e),
 			};
-			cpu.x[f.rd] = tmp as i32 as i64;
+			cpu.x[f.rd] = cpu.sign_extend(orig as i32 as i64);
 			Ok(())
 		},
 		disassemble: dump_format_r,
@@ -3554,7 +3619,7 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 			};
 			let result = (orig as u32) ^ (cpu.x[f.rs2] as u32);
 			match cpu.mmu.store_word(addr, result) {
-				Ok(()) => {},
+				Ok(()) => {}
 				Err(e) => return Err(e),
 			};
 			cpu.x[f.rd] = orig;

@@ -1031,7 +1031,6 @@ impl Cpu {
 					}
 					2 => {
 						// C.LI
-						// addi rd, x0, imm
 						let r = (halfword >> 7) & 0x1f;
 						let imm = match halfword & 0x1000 {
 							0x1000 => 0xffffffc0,
@@ -1040,10 +1039,12 @@ impl Cpu {
 						((halfword >> 7) & 0x20) | // imm[5] <= [12]
 						((halfword >> 2) & 0x1f); // imm[4:0] <= [6:2]
 						if r != 0 {
+							// addi rd, x0, imm
 							return (imm << 20) | (r << 7) | 0x13;
+						} else {
+							// HINT
+							return 0x13;
 						}
-						// @TODO: Support HINTs
-						// r == 0 is for HINTs
 					}
 					3 => {
 						let r = (halfword >> 7) & 0x1f; // [11:7]

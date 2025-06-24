@@ -1301,39 +1301,48 @@ impl Cpu {
 						let rs2 = (halfword >> 2) & 0x1f; // [6:2]
 						match funct1 {
 							0 => {
-								if rs1 != 0 && rs2 == 0 {
-									// C.JR
-									// jalr x0, 0(rs1)
-									return (rs1 << 15) | 0x67;
+								// C.MV
+								match (rs1, rs2) {
+									(0, 0) => {
+										// Reserved
+									}
+									(r, 0) if r != 0 => {
+										// C.JR: jalr x0, 0(rs1)
+										return (rs1 << 15) | 0x67;
+									}
+									(0, r2) if r2 != 0 => {
+										// HINT
+										return 0x13;
+									}
+									(rd, rs2) => {
+										// add rd, x0, rs2
+										return (rs2 << 20) | (rd << 7) | 0x33;
+									}
 								}
-								// rs1 == 0 is reserved instruction
-								if rs1 != 0 && rs2 != 0 {
-									// C.MV
-									// add rs1, x0, rs2
-									// println!("C.MV RS1:{:x} RS2:{:x}", rs1, rs2);
-									return (rs2 << 20) | (rs1 << 7) | 0x33;
-								}
-								// rs1 == 0 && rs2 != 0 is Hints
-								// @TODO: Support Hints
 							}
 							1 => {
-								if rs1 == 0 && rs2 == 0 {
-									// C.EBREAK
-									// ebreak
-									return 0x00100073;
+								// C.ADD
+								match (rs1, rs2) {
+									(0, 0) => {
+										// C.EBREAK
+										// ebreak
+										return 0x00100073;
+									}
+									(r1, 0) if r1 != 0 => {
+										// C.JALR
+										// jalr x1, 0(rs1)
+										return (rs1 << 15) | (1 << 7) | 0x67;
+									}
+									(0, r2) if r2 != 0 => {
+										// HINT
+										return 0x13;
+									}
+									(rd, rs2) => {
+										// C.ADD
+										// add rs1, rs1, rs2
+										return (rs2 << 20) | (rs1 << 15) | (rs1 << 7) | 0x33;
+									}
 								}
-								if rs1 != 0 && rs2 == 0 {
-									// C.JALR
-									// jalr x1, 0(rs1)
-									return (rs1 << 15) | (1 << 7) | 0x67;
-								}
-								if rs1 != 0 && rs2 != 0 {
-									// C.ADD
-									// add rs1, rs1, rs2
-									return (rs2 << 20) | (rs1 << 15) | (rs1 << 7) | 0x33;
-								}
-								// rs1 == 0 && rs2 != 0 is Hists
-								// @TODO: Supports Hinsts
 							}
 							_ => {} // Not happens
 						};

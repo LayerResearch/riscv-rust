@@ -998,20 +998,48 @@ impl Cpu {
 						}
 					}
 					1 => {
-						// @TODO: Support C.JAL in 32-bit mode
-						// C.ADDIW
-						// addiw r, r, imm
-						let r = (halfword >> 7) & 0x1f;
-						let imm = match halfword & 0x1000 {
-							0x1000 => 0xffffffc0,
-							_ => 0
-						} | // imm[31:6] <= [12]
-						((halfword >> 7) & 0x20) | // imm[5] <= [12]
-						((halfword >> 2) & 0x1f); // imm[4:0] <= [6:2]
-						if r != 0 {
-							return (imm << 20) | (r << 15) | (r << 7) | 0x1b;
+						match self.xlen {
+							Xlen::Bit32 => {
+								// C.JAL (RV32C only)
+								// jal x1, offset
+								let offset = match halfword & 0x1000 {
+									0x1000 => 0xfffff000,
+									_ => 0
+								} | // offset[31:12] <= [12]
+								((halfword >> 1) & 0x800) | // offset[11] <= [12]
+								((halfword >> 7) & 0x10) | // offset[4] <= [11]
+								((halfword >> 1) & 0x300) | // offset[9:8] <= [10:9]
+								((halfword << 2) & 0x400) | // offset[10] <= [8]
+								((halfword >> 1) & 0x40) | // offset[6] <= [7]
+								((halfword << 1) & 0x80) | // offset[7] <= [6]
+								((halfword >> 2) & 0xe) | // offset[3:1] <= [5:3]
+								((halfword << 3) & 0x20); // offset[5] <= [2]
+								let imm = ((offset >> 1) & 0x80000) | // imm[19] <= offset[20]
+									((offset << 8) & 0x7fe00) | // imm[18:9] <= offset[10:1]
+									((offset >> 3) & 0x100) | // imm[8] <= offset[11]
+									((offset >> 12) & 0xff); // imm[7:0] <= offset[19:12]
+								return (imm << 12) | (1 << 7) | 0x6f;
+							}
+							Xlen::Bit64 => {
+								// C.ADDIW (RV64C only)
+								let r = (halfword >> 7) & 0x1f;
+								let imm = match halfword & 0x1000 {
+									0x1000 => 0xffffffc0,
+									_ => 0
+								} | // imm[31:6] <= [12]
+								((halfword >> 7) & 0x20) | // imm[5] <= [12]
+								((halfword >> 2) & 0x1f); // imm[4:0] <= [6:2]
+								if r == 0 {
+									// Reserved
+								} else if imm == 0 {
+									// sext.w rd
+									return (r << 15) | (r << 7) | 0x1b;
+								} else {
+									// addiw r, r, imm
+									return (imm << 20) | (r << 15) | (r << 7) | 0x1b;
+								}
+							}
 						}
-						// r == 0 is reserved instruction
 					}
 					2 => {
 						// C.LI

@@ -1063,6 +1063,10 @@ impl Cpu {
 							}
 							// nzimm == 0 is for reserved instruction
 						}
+						if r == 0 {
+							// NOP
+							return 0x13;
+						}
 					}
 					4 => {
 						let funct2 = (halfword >> 10) & 0x3; // [11:10]

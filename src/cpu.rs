@@ -3312,7 +3312,7 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 				Xlen::Bit64 => 0x3f,
 			};
 			let shamt = (word >> 20) & mask;
-			cpu.x[f.rd] = cpu.sign_extend(cpu.x[f.rs1] << shamt);
+			cpu.x[f.rd] = (cpu.x[f.rs1] << shamt);
 			Ok(())
 		},
 		disassemble: dump_format_r,

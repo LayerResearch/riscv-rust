@@ -997,22 +997,6 @@ impl Cpu {
 							}
 						}
 					}
-					5 => {
-						// C.J
-						// jal x0, offset
-						let imm = match halfword & 0x1000 {
-							0x1000 => 0xfff00000,
-							_ => 0
-						} | // imm[31:20] <= [12]
-						((halfword & 0x800) << 9) | // imm[11] <= [11]
-						((halfword & 0x400) << 8) | // imm[10] <= [10]
-						((halfword & 0x300) << 7) | // imm[9:8] <= [9:8]
-						((halfword & 0x80) << 4) | // imm[7] <= [7]
-						((halfword & 0x40) << 4) | // imm[6] <= [6]
-						((halfword & 0x20) << 4) | // imm[5] <= [5]
-						((halfword & 0x10) << 4); // imm[4] <= [4]
-						return (imm << 12) | 0x6f;
-					}
 					1 => {
 						// @TODO: Support C.JAL in 32-bit mode
 						// C.ADDIW

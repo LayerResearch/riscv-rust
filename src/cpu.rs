@@ -1806,7 +1806,7 @@ fn get_register_name(num: usize) -> &'static str {
 	}
 }
 
-const INSTRUCTION_NUM: usize = 116;
+const INSTRUCTION_NUM: usize = 117;
 
 // @TODO: Reorder in often used order as
 const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
@@ -3540,6 +3540,27 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 			Ok(())
 		},
 		disassemble: dump_format_i,
+	},
+	Instruction {
+		mask: 0xf800707f,
+		data: 0x2000202f,
+		name: "AMOXOR.W",
+		operation: |cpu, word, _address| {
+			let f = parse_format_r(word);
+			let addr = cpu.x[f.rs1] as u64;
+			let orig = match cpu.mmu.load_word(addr) {
+				Ok(data) => data as i32 as i64,
+				Err(e) => return Err(e),
+			};
+			let result = (orig as u32) ^ (cpu.x[f.rs2] as u32);
+			match cpu.mmu.store_word(addr, result) {
+				Ok(()) => {},
+				Err(e) => return Err(e),
+			};
+			cpu.x[f.rd] = orig;
+			Ok(())
+		},
+		disassemble: dump_format_r,
 	},
 ];
 

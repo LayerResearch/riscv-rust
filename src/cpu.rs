@@ -3177,7 +3177,11 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		name: "SLL",
 		operation: |cpu, word, _address| {
 			let f = parse_format_r(word);
-			cpu.x[f.rd] = cpu.sign_extend(cpu.x[f.rs1].wrapping_shl(cpu.x[f.rs2] as u32));
+			let mask = match cpu.xlen {
+				Xlen::Bit32 => 0x1f, // 31 or 0b11111
+				Xlen::Bit64 => 0x3f, // 63 or 0b111111
+			};
+			cpu.x[f.rd] = cpu.sign_extend(cpu.x[f.rs1].wrapping_shl(cpu.x[f.rs2] as u32 & mask));
 			Ok(())
 		},
 		disassemble: dump_format_r,
@@ -3364,9 +3368,13 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		name: "SRL",
 		operation: |cpu, word, _address| {
 			let f = parse_format_r(word);
+			let mask = match cpu.xlen {
+				Xlen::Bit32 => 0x1f, // 31 or 0b11111
+				Xlen::Bit64 => 0x3f, // 63 or 0b111111
+			};
 			cpu.x[f.rd] = cpu.sign_extend(
 				cpu.unsigned_data(cpu.x[f.rs1])
-					.wrapping_shr(cpu.x[f.rs2] as u32) as i64,
+					.wrapping_shr(cpu.x[f.rs2] as u32 & mask) as i64,
 			);
 			Ok(())
 		},

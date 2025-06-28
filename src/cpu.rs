@@ -2710,7 +2710,8 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		operation: |cpu, word, _address| {
 			let f = parse_format_i(word);
 			let tmp = cpu.sign_extend(cpu.pc as i64);
-			cpu.pc = (cpu.x[f.rs1] as u64).wrapping_add(f.imm as u64);
+			// Clear LSB to ensure 2-byte instruction alignment per RISC-V spec
+			cpu.pc = ((cpu.x[f.rs1] as u64).wrapping_add(f.imm as u64)) & !1;
 			cpu.x[f.rd] = tmp;
 			Ok(())
 		},

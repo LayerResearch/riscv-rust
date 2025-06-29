@@ -1956,7 +1956,7 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 			let value = cpu.x[f.rs2];
 			let min = if orig <= value { orig } else { value };
 			match cpu.mmu.store_doubleword(addr, min as u64) {
-				Ok(()) => {},
+				Ok(()) => {}
 				Err(e) => return Err(e),
 			};
 			cpu.x[f.rd] = orig;
@@ -1978,7 +1978,7 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 			let value = cpu.x[f.rs2];
 			let max = if orig >= value { orig } else { value };
 			match cpu.mmu.store_doubleword(addr, max as u64) {
-				Ok(()) => {},
+				Ok(()) => {}
 				Err(e) => return Err(e),
 			};
 			cpu.x[f.rd] = orig;
@@ -2000,7 +2000,7 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 			let value = cpu.x[f.rs2] as u64;
 			let min = if orig <= value { orig } else { value };
 			match cpu.mmu.store_doubleword(addr, min) {
-				Ok(()) => {},
+				Ok(()) => {}
 				Err(e) => return Err(e),
 			};
 			cpu.x[f.rd] = orig as i64;
@@ -2944,10 +2944,9 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		name: "LD",
 		operation: |cpu, word, _address| {
 			let f = parse_format_i(word);
-			cpu.x[f.rd] = match cpu
-				.mmu
-				.load_doubleword(cpu.x[f.rs1].wrapping_add(f.imm) as u64)
-			{
+			let address = cpu.x[f.rs1].wrapping_add(f.imm) as u64;
+			let value = cpu.mmu.load_doubleword(address);
+			cpu.x[f.rd] = match value {
 				Ok(data) => data as i64,
 				Err(e) => return Err(e),
 			};
@@ -3058,7 +3057,9 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		name: "LWU",
 		operation: |cpu, word, _address| {
 			let f = parse_format_i(word);
-			cpu.x[f.rd] = match cpu.mmu.load_word(cpu.x[f.rs1].wrapping_add(f.imm) as u64) {
+			let address = cpu.x[f.rs1].wrapping_add(f.imm) as u64;
+			let value = cpu.mmu.load_word(address);
+			cpu.x[f.rd] = match value {
 				Ok(data) => data as i64,
 				Err(e) => return Err(e),
 			};
@@ -3325,8 +3326,12 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		name: "SD",
 		operation: |cpu, word, _address| {
 			let f = parse_format_s(word);
-			cpu.mmu
-				.store_doubleword(cpu.x[f.rs1].wrapping_add(f.imm) as u64, cpu.x[f.rs2] as u64)
+			let address = cpu.x[f.rs1].wrapping_add(f.imm) as u64;
+			let value = cpu.x[f.rs2] as u64;
+			match cpu.mmu.store_doubleword(address, value) {
+				Ok(()) => Ok(()),
+				Err(e) => Err(e),
+			}
 		},
 		disassemble: dump_format_s,
 	},
@@ -3371,27 +3376,28 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		data: 0x00001013,
 		name: "SLLI",
 		operation: |cpu, word, _address| {
-			let f = parse_format_r(word);
+			let f = parse_format_i(word);
 			let mask = match cpu.xlen {
 				Xlen::Bit32 => 0x1f,
 				Xlen::Bit64 => 0x3f,
 			};
-			let shamt = (word >> 20) & mask;
-			cpu.x[f.rd] = (cpu.x[f.rs1] << shamt);
+			let shamt = (f.imm & mask) as u32;
+			cpu.x[f.rd] = cpu.sign_extend(cpu.x[f.rs1].wrapping_shl(shamt));
 			Ok(())
 		},
-		disassemble: dump_format_r,
+		disassemble: dump_format_i,
 	},
 	Instruction {
 		mask: 0xfe00707f,
 		data: 0x0000101b,
 		name: "SLLIW",
 		operation: |cpu, word, _address| {
-			let f = parse_format_r(word);
-			cpu.x[f.rd] = (cpu.x[f.rs1] << f.rs2) as i32 as i64;
+			let f = parse_format_i(word);
+			let shamt = (f.imm & 0x1f) as u32;
+			cpu.x[f.rd] = (cpu.x[f.rs1] << shamt) as i32 as i64;
 			Ok(())
 		},
-		disassemble: dump_format_r,
+		disassemble: dump_format_i,
 	},
 	Instruction {
 		mask: 0xfe00707f,
@@ -3399,7 +3405,8 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		name: "SLLW",
 		operation: |cpu, word, _address| {
 			let f = parse_format_r(word);
-			cpu.x[f.rd] = (cpu.x[f.rs1] as u32).wrapping_shl(cpu.x[f.rs2] as u32) as i32 as i64;
+			let shamt = (cpu.x[f.rs2] & 0x1f) as u32;
+			cpu.x[f.rd] = (cpu.x[f.rs1] as u32).wrapping_shl(shamt) as i32 as i64;
 			Ok(())
 		},
 		disassemble: dump_format_r,
@@ -3476,12 +3483,12 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		data: 0x40005013,
 		name: "SRAI",
 		operation: |cpu, word, _address| {
-			let f = parse_format_r(word);
+			let f = parse_format_i(word);
 			let mask = match cpu.xlen {
 				Xlen::Bit32 => 0x1f,
 				Xlen::Bit64 => 0x3f,
 			};
-			let shamt = (word >> 20) & mask;
+			let shamt = (f.imm & mask) as u32;
 			cpu.x[f.rd] = cpu.sign_extend(cpu.x[f.rs1] >> shamt);
 			Ok(())
 		},
@@ -3492,8 +3499,9 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		data: 0x4000501b,
 		name: "SRAIW",
 		operation: |cpu, word, _address| {
-			let f = parse_format_r(word);
-			cpu.x[f.rd] = ((cpu.x[f.rs1] as i32) >> f.rs2) as i64;
+			let f = parse_format_i(word);
+			let shamt = (f.imm & 0x1f) as u32;
+			cpu.x[f.rd] = ((cpu.x[f.rs1] as i32) >> shamt) as i64;
 			Ok(())
 		},
 		disassemble: dump_format_r,
@@ -3504,7 +3512,8 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		name: "SRAW",
 		operation: |cpu, word, _address| {
 			let f = parse_format_r(word);
-			cpu.x[f.rd] = (cpu.x[f.rs1] as i32).wrapping_shr(cpu.x[f.rs2] as u32) as i64;
+			let shamt = (cpu.x[f.rs2] & 0x1f) as u32;
+			cpu.x[f.rd] = (cpu.x[f.rs1] as i32).wrapping_shr(shamt) as i64;
 			Ok(())
 		},
 		disassemble: dump_format_r,
@@ -3563,12 +3572,12 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		data: 0x00005013,
 		name: "SRLI",
 		operation: |cpu, word, _address| {
-			let f = parse_format_r(word);
+			let f = parse_format_i(word);
 			let mask = match cpu.xlen {
 				Xlen::Bit32 => 0x1f,
 				Xlen::Bit64 => 0x3f,
 			};
-			let shamt = (word >> 20) & mask;
+			let shamt = (f.imm & mask) as u32;
 			cpu.x[f.rd] = cpu.sign_extend((cpu.unsigned_data(cpu.x[f.rs1]) >> shamt) as i64);
 			Ok(())
 		},
@@ -3579,11 +3588,12 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		data: 0x0000501b,
 		name: "SRLIW",
 		operation: |cpu, word, _address| {
-			let f = parse_format_r(word);
-			cpu.x[f.rd] = ((cpu.x[f.rs1] as u32) >> f.rs2) as i32 as i64;
+			let f = parse_format_i(word);
+			let shamt = (f.imm & 0x1f) as u32;
+			cpu.x[f.rd] = ((cpu.x[f.rs1] as u32) >> shamt) as i32 as i64;
 			Ok(())
 		},
-		disassemble: dump_format_r,
+		disassemble: dump_format_i,
 	},
 	Instruction {
 		mask: 0xfe00707f,
@@ -3591,7 +3601,8 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 		name: "SRLW",
 		operation: |cpu, word, _address| {
 			let f = parse_format_r(word);
-			cpu.x[f.rd] = (cpu.x[f.rs1] as u32).wrapping_shr(cpu.x[f.rs2] as u32) as i32 as i64;
+			let shamt = (cpu.x[f.rs2] & 0x1f) as u32;
+			cpu.x[f.rd] = (cpu.x[f.rs1] as u32).wrapping_shr(shamt) as i32 as i64;
 			Ok(())
 		},
 		disassemble: dump_format_r,
@@ -3705,7 +3716,7 @@ const INSTRUCTIONS: [Instruction; INSTRUCTION_NUM] = [
 			};
 			let result = orig ^ cpu.x[f.rs2];
 			match cpu.mmu.store_doubleword(addr, result as u64) {
-				Ok(()) => {},
+				Ok(()) => {}
 				Err(e) => return Err(e),
 			};
 			cpu.x[f.rd] = orig;
